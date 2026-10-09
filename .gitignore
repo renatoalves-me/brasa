@@ -1,0 +1,7 @@
+.claude/
+build/
+.DS_Store
+site/dist/
+brand/test-sheet.html
+.wrangler/
+node_modules/

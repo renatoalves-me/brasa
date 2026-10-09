@@ -1,0 +1,92 @@
+/* Vértice tokens (decisão 60). Gerado por sistema/assets/vertice/assets.py: não editar à mão.
+   Uso: <html data-app="projetos"> escolhe o filho; tema segue o sistema ou data-theme="dark|light". */
+@font-face{font-family:"Geist";font-weight:100 900;font-display:swap;src:url(fonts/geist.woff2) format("woff2")}
+@font-face{font-family:"Geist Mono";font-weight:100 900;font-display:swap;src:url(fonts/geist-mono.woff2) format("woff2")}
+:root{
+  --vt-font:"Geist",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --vt-mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --vt-text-xs:12px;--vt-text-sm:13px;--vt-text-md:15px;--vt-text-lg:18px;--vt-text-xl:24px;--vt-text-2xl:32px;--vt-text-3xl:44px;
+  --vt-space-1:4px;--vt-space-2:8px;--vt-space-3:12px;--vt-space-4:16px;--vt-space-5:24px;--vt-space-6:32px;--vt-space-7:48px;--vt-space-8:64px;
+  --vt-radius-sm:8px;--vt-radius-md:12px;--vt-radius-lg:18px;--vt-radius-pill:999px;--vt-radius-icon:22.5%;
+  --vt-ease:cubic-bezier(.2,.8,.2,1);--vt-ease-turn:cubic-bezier(.7,0,.25,1);
+  --vt-fast:140ms;--vt-base:220ms;--vt-slow:360ms;
+  --vt-target:44px;
+}
+:root,:root[data-theme=light]{
+  --vt-bg:#F9FAFE;
+  --vt-surface:#FEFFFF;
+  --vt-surface-2:#F2F3F8;
+  --vt-surface-3:#E8E9EE;
+  --vt-line:#DEDFE4;
+  --vt-line-2:#CBCCD0;
+  --vt-text:#17181B;
+  --vt-text-2:#494A4E;
+  --vt-text-3:#68696C;
+  --vt-ok:#007F38;
+  --vt-warning:#8B6001;
+  --vt-error:#B33832;
+  --vt-accent:#17181B;--vt-on-accent:#FFFFFF;--vt-accent-tint:#F2F3F8;
+  color-scheme:light;}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme=light]){
+    --vt-bg:#0B0C0F;
+    --vt-surface:#131417;
+    --vt-surface-2:#1B1C1F;
+    --vt-surface-3:#242528;
+    --vt-line:#2A2B2E;
+    --vt-line-2:#3C3D40;
+    --vt-text:#EDEEF3;
+    --vt-text-2:#B6B7BB;
+    --vt-text-3:#8B8C90;
+    --vt-ok:#67D283;
+    --vt-warning:#EBAA2D;
+    --vt-error:#FF968A;
+    --vt-accent:#EDEEF3;--vt-on-accent:#0B0C0F;--vt-accent-tint:#1B1C1F;
+    color-scheme:dark;}
+}
+:root[data-theme=dark]{
+  --vt-bg:#0B0C0F;
+  --vt-surface:#131417;
+  --vt-surface-2:#1B1C1F;
+  --vt-surface-3:#242528;
+  --vt-line:#2A2B2E;
+  --vt-line-2:#3C3D40;
+  --vt-text:#EDEEF3;
+  --vt-text-2:#B6B7BB;
+  --vt-text-3:#8B8C90;
+  --vt-ok:#67D283;
+  --vt-warning:#EBAA2D;
+  --vt-error:#FF968A;
+  --vt-accent:#EDEEF3;--vt-on-accent:#0B0C0F;--vt-accent-tint:#1B1C1F;
+  color-scheme:dark;}
+[data-app="projetos"]{--vt-accent:#007C7C;--vt-on-accent:#FFFFFF;--vt-accent-tint:#D6F8F7}
+@media (prefers-color-scheme:dark){[data-app="projetos"]:not([data-theme=light]){--vt-accent:#00D5D5;--vt-on-accent:#0B0C0F;--vt-accent-tint:#002A2A}}
+[data-app="projetos"][data-theme=dark]{--vt-accent:#00D5D5;--vt-on-accent:#0B0C0F;--vt-accent-tint:#002A2A}
+[data-app="studio"]{--vt-accent:#A73F80;--vt-on-accent:#FFFFFF;--vt-accent-tint:#FFE7F6}
+@media (prefers-color-scheme:dark){[data-app="studio"]:not([data-theme=light]){--vt-accent:#F896CE;--vt-on-accent:#0B0C0F;--vt-accent-tint:#341828}}
+[data-app="studio"][data-theme=dark]{--vt-accent:#F896CE;--vt-on-accent:#0B0C0F;--vt-accent-tint:#341828}
+[data-app="edicao"]{--vt-accent:#7454BA;--vt-on-accent:#FFFFFF;--vt-accent-tint:#F1ECFF}
+@media (prefers-color-scheme:dark){[data-app="edicao"]:not([data-theme=light]){--vt-accent:#C0ABFF;--vt-on-accent:#0B0C0F;--vt-accent-tint:#251D38}}
+[data-app="edicao"][data-theme=dark]{--vt-accent:#C0ABFF;--vt-on-accent:#0B0C0F;--vt-accent-tint:#251D38}
+[data-app="biblioteca"]{--vt-accent:#6A7300;--vt-on-accent:#FFFFFF;--vt-accent-tint:#EFF3D9}
+@media (prefers-color-scheme:dark){[data-app="biblioteca"]:not([data-theme=light]){--vt-accent:#B8C557;--vt-on-accent:#0B0C0F;--vt-accent-tint:#222506}}
+[data-app="biblioteca"][data-theme=dark]{--vt-accent:#B8C557;--vt-on-accent:#0B0C0F;--vt-accent-tint:#222506}
+[data-app="pesquisa"]{--vt-accent:#0171B3;--vt-on-accent:#FFFFFF;--vt-accent-tint:#DDF3FF}
+@media (prefers-color-scheme:dark){[data-app="pesquisa"]:not([data-theme=light]){--vt-accent:#7AC2FE;--vt-on-accent:#0B0C0F;--vt-accent-tint:#0B2539}}
+[data-app="pesquisa"][data-theme=dark]{--vt-accent:#7AC2FE;--vt-on-accent:#0B0C0F;--vt-accent-tint:#0B2539}
+[data-app="automacoes"]{--vt-accent:#007892;--vt-on-accent:#FFFFFF;--vt-accent-tint:#D7F6FF}
+@media (prefers-color-scheme:dark){[data-app="automacoes"]:not([data-theme=light]){--vt-accent:#2ECEF6;--vt-on-accent:#0B0C0F;--vt-accent-tint:#002833}}
+[data-app="automacoes"][data-theme=dark]{--vt-accent:#2ECEF6;--vt-on-accent:#0B0C0F;--vt-accent-tint:#002833}
+[data-app="ias"]{--vt-accent:#9248A2;--vt-on-accent:#FFFFFF;--vt-accent-tint:#FBE9FF}
+@media (prefers-color-scheme:dark){[data-app="ias"]:not([data-theme=light]){--vt-accent:#E19DF0;--vt-on-accent:#0B0C0F;--vt-accent-tint:#2D1A32}}
+[data-app="ias"][data-theme=dark]{--vt-accent:#E19DF0;--vt-on-accent:#0B0C0F;--vt-accent-tint:#2D1A32}
+[data-app="negocios"]{--vt-accent:#4A62C4;--vt-on-accent:#FFFFFF;--vt-accent-tint:#E7F0FF}
+@media (prefers-color-scheme:dark){[data-app="negocios"]:not([data-theme=light]){--vt-accent:#A0B7FF;--vt-on-accent:#0B0C0F;--vt-accent-tint:#19213B}}
+[data-app="negocios"][data-theme=dark]{--vt-accent:#A0B7FF;--vt-on-accent:#0B0C0F;--vt-accent-tint:#19213B}
+[data-app="pauta"]{--vt-accent:#007F62;--vt-on-accent:#FFFFFF;--vt-accent-tint:#DAF8EC}
+@media (prefers-color-scheme:dark){[data-app="pauta"]:not([data-theme=light]){--vt-accent:#48D6AD;--vt-on-accent:#0B0C0F;--vt-accent-tint:#002A1F}}
+[data-app="pauta"][data-theme=dark]{--vt-accent:#48D6AD;--vt-on-accent:#0B0C0F;--vt-accent-tint:#002A1F}
+[data-app="equipe"]{--vt-accent:#905F36;--vt-on-accent:#FFFFFF;--vt-accent-tint:#FBEDE2}
+@media (prefers-color-scheme:dark){[data-app="equipe"]:not([data-theme=light]){--vt-accent:#DFB08B;--vt-on-accent:#0B0C0F;--vt-accent-tint:#2E1F14}}
+[data-app="equipe"][data-theme=dark]{--vt-accent:#DFB08B;--vt-on-accent:#0B0C0F;--vt-accent-tint:#2E1F14}
+@media (prefers-reduced-motion:reduce){:root{--vt-fast:0ms;--vt-base:0ms;--vt-slow:0ms}}

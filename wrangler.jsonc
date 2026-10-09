@@ -1,0 +1,6 @@
+{
+  // Brasa site on Cloudflare (Workers static assets). Build first: python3 site/build.py https://YOUR-URL
+  "name": "brasa",
+  "compatibility_date": "2026-10-01",
+  "assets": { "directory": "./site/dist" }
+}
