@@ -4,6 +4,7 @@
 // Deliberately light: everything is read inside the process (no shell commands) every 2 s; the process list is only
 // read while the panel is open.
 import SwiftUI
+import Network
 import AppKit
 import IOKit
 import ServiceManagement
@@ -144,6 +145,15 @@ final class Temperatures {
       let svc = OpaquePointer(Unmanaged.passUnretained(s).toOpaque())
       if let name = IOHIDServiceClientCopyProperty(svc, "Product" as CFString)?.takeRetainedValue() as? String { services.append((name, svc)) }
     }
+  }
+  /// every temperature sensor the Mac exposes (for `--sensors`: lets anyone report a new chip)
+  func all() -> [(name: String, value: Double)] {
+    services.compactMap { name, svc in
+      guard let ev = IOHIDServiceClientCopyEvent(svc, 15, 0, 0) else { return nil }
+      let v = IOHIDEventGetFloatValue(ev, Int32(15 << 16))
+      Unmanaged<AnyObject>.fromOpaque(UnsafeRawPointer(ev)).release()
+      return v > -50 && v < 200 ? (name, v) : nil // some services report a placeholder when idle
+    }.sorted { $0.name < $1.name }
   }
   /// (chip = highest temperature among the chip cores, battery, SSD)
   func read() -> (chip: Double?, battery: Double?, ssd: Double?) {
@@ -305,13 +315,18 @@ final class Monitor: ObservableObject {
 
   private let temps = Temperatures(), load = Load(), smc = SMC()
   private var clock: Timer?, counter = 0
+  private let headless: Bool
 
-  init() {
+  /// headless = command-line modes (`--json`, `--serve`): no notifications
+  init(headless: Bool = false) {
+    self.headless = headless
     sample()
     clock = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in Task { @MainActor in self?.sample() } }
     clock?.tolerance = 0.5
-    UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+    if !headless { UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in } }
   }
+
+  func sensorDump() -> [(name: String, value: Double)] { temps.all() }
 
   func sample() {
     let t = temps.read()
@@ -366,12 +381,60 @@ final class Monitor: ObservableObject {
   }
 
   private func alert(from: Level, to: Level) {
-    guard Settings.shared.notify, to > from || to == .ok && from >= .pause else { return }
+    guard !headless, Settings.shared.notify, to > from || to == .ok && from >= .pause else { return }
     let c = UNMutableNotificationContent()
     c.title = to == .ok ? L.t("Mac back to normal") : L.f("Mac: %@", to.title.lowercased())
     c.body = to == .ok ? L.t("Chip, battery, memory and SSD within normal range.") : reason
     if to >= .pause && Settings.shared.soundOnPause { c.sound = .default }
     UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: UUID().uuidString, content: c, trigger: nil))
+  }
+
+  // ── machine-readable output (`--json`, `--watch`, `--serve`): the status AND what to do next, not just numbers ──
+  private static let levelNames = ["safe", "warming_up", "too_hot", "critical"]
+  private static func name(_ l: Level) -> String { levelNames[l.rawValue] }
+
+  func snapshot() -> [String: Any] {
+    func n(_ v: Double?) -> Any { v.map { NSDecimalNumber(string: String(format: "%.1f", $0)) } ?? NSNull() }
+    let thermal = ["nominal", "fair", "serious", "critical"][min(macState.rawValue, 3)]
+    return [
+      "status": ["level": Self.name(level), "level_index": level.rawValue, "title": level.title, "advice": reason],
+      "levels": ["chip": Self.name(chipLevel), "battery": Self.name(batteryLevel), "ssd": Self.name(ssdLevel), "memory": Self.name(memoryLevel)],
+      "temperature_celsius": ["chip": n(temp), "battery": n(battery), "ssd": n(ssd)],
+      "load_percent": ["cpu": n(cpu), "gpu": n(gpu)],
+      "memory": ["used_gb": n(memUsed), "total_gb": n(memTotal), "pressure": pressure, "swap_gb": n(swap)],
+      "fans": fans.map { ["rpm": Int($0.current), "max_rpm": Int($0.maximum)] },
+      "thermal_state": thermal,
+      "thresholds_celsius": ["chip_warn": Limit.warn, "chip_pause": Limit.pause, "chip_critical": Limit.critical, "chip_resume": Limit.resume],
+      "timestamp": ISO8601DateFormatter().string(from: Date()),
+    ]
+  }
+
+  func json(pretty: Bool = true) -> String {
+    let o: JSONSerialization.WritingOptions = pretty ? [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes] : [.sortedKeys, .withoutEscapingSlashes]
+    guard let d = try? JSONSerialization.data(withJSONObject: snapshot(), options: o) else { return "{}" }
+    return String(decoding: d, as: UTF8.self)
+  }
+
+  /// Prometheus text exposition format
+  func prometheus() -> String {
+    var out = ""
+    func gauge(_ name: String, _ help: String, _ rows: [(String, Double?)]) {
+      let live = rows.compactMap { l, v in v.map { (l, $0) } }
+      guard !live.isEmpty else { return }
+      out += "# HELP \(name) \(help)\n# TYPE \(name) gauge\n"
+      for (l, v) in live { out += "\(name)\(l.isEmpty ? "" : "{\(l)}") \(v)\n" }
+    }
+    gauge("brasa_level", "Worst level across chip, battery, SSD and memory (0 safe, 1 warming up, 2 too hot, 3 critical).", [("", Double(level.rawValue))])
+    gauge("brasa_component_level", "Level per component (0 to 3).", [("component=\"chip\"", Double(chipLevel.rawValue)), ("component=\"battery\"", Double(batteryLevel.rawValue)), ("component=\"ssd\"", Double(ssdLevel.rawValue)), ("component=\"memory\"", Double(memoryLevel.rawValue))])
+    gauge("brasa_temperature_celsius", "Temperature in degrees Celsius.", [("sensor=\"chip\"", temp), ("sensor=\"battery\"", battery), ("sensor=\"ssd\"", ssd)])
+    gauge("brasa_cpu_load_percent", "CPU load in percent.", [("", cpu)])
+    gauge("brasa_gpu_load_percent", "GPU load in percent.", [("", gpu)])
+    gauge("brasa_memory_used_gigabytes", "Memory in use, in GB.", [("", memUsed)])
+    gauge("brasa_memory_pressure", "macOS memory pressure (1 normal, 2 warning, 4 critical).", [("", Double(pressure))])
+    gauge("brasa_swap_used_gigabytes", "Swap in use, in GB.", [("", swap)])
+    gauge("brasa_thermal_state", "macOS thermal state (0 nominal, 1 fair, 2 serious, 3 critical).", [("", Double(min(macState.rawValue, 3)))])
+    gauge("brasa_fan_rpm", "Fan speed in RPM.", fans.enumerated().map { ("fan=\"\($0.offset)\"", $0.element.current) })
+    return out
   }
 
   func readProcesses() {
@@ -799,6 +862,104 @@ final class MenuBar: NSObject, NSApplicationDelegate {
   }
 }
 
+// ───────── command line: `Brasa --json | --watch | --prometheus | --serve [port] | --sensors | --version | --help` ─────────
+enum CLI {
+  static let version = "1.1.0"
+  static let help = """
+  Brasa \(version): Mac temperature monitor for Apple Silicon (no sudo).
+  Without options it opens the menu bar app. Options print to the terminal and exit:
+
+    --json            one reading as JSON: status, advice, temperatures, load, memory, fans
+    --watch [secs]    one compact JSON line every few seconds (default 2), for scripts and jq
+    --prometheus      one reading in Prometheus text format
+    --serve [port]    local server on 127.0.0.1 (default 9091): /metrics (Prometheus), /json, /healthz
+    --sensors         every temperature sensor the Mac exposes (use it to report a new chip)
+    --language en|pt|es   language of the advice text
+    --version, --help
+  """
+
+  /// true when a command-line mode handled the run (the caller then enters the run loop)
+  @MainActor static func run(_ args: [String], app: NSApplication) -> Bool {
+    func value(after flag: String) -> String? { args.firstIndex(of: flag).flatMap { $0 + 1 < args.count && !args[$0 + 1].hasPrefix("--") ? args[$0 + 1] : nil } }
+    if args.contains("--help") || args.contains("-h") { print(help); exit(0) }
+    if args.contains("--version") { print("Brasa \(version)"); exit(0) }
+    if args.contains("--sensors") {
+      let t = Temperatures().all()
+      if t.isEmpty { FileHandle.standardError.write(Data("No temperature sensors found.\n".utf8)); exit(1) }
+      let chip = Monitor(headless: true)
+      for (n, v) in t { print(String(format: "%7.1f °C  %@", v, n)) }
+      print("\nmodel: \(modelName())  macOS \(ProcessInfo.processInfo.operatingSystemVersionString)  chip reading: \(chip.temp.map { String(format: "%.1f °C", $0) } ?? "none")")
+      exit(0)
+    }
+    if args.contains("--json") || args.contains("--prometheus") {
+      Task { @MainActor in
+        let m = Monitor(headless: true)
+        try? await Task.sleep(for: .seconds(1.2)) // CPU load needs two readings
+        m.sample()
+        print(args.contains("--json") ? m.json() : m.prometheus(), terminator: args.contains("--json") ? "\n" : "")
+        exit(0)
+      }
+      return true
+    }
+    if args.contains("--watch") {
+      let every = max(Double(value(after: "--watch") ?? "") ?? 2, 1)
+      Task { @MainActor in
+        let m = Monitor(headless: true)
+        while true { try? await Task.sleep(for: .seconds(every)); m.sample(); print(m.json(pretty: false)); fflush(stdout) }
+      }
+      return true
+    }
+    if args.contains("--serve") {
+      let port = UInt16(value(after: "--serve") ?? "") ?? 9091
+      let m = Monitor(headless: true)
+      do { try Server.start(port: port, monitor: m) } catch { FileHandle.standardError.write(Data("Could not listen on 127.0.0.1:\(port): \(error.localizedDescription)\n".utf8)); exit(1) }
+      print("Brasa serving on http://127.0.0.1:\(port)  (/metrics, /json, /healthz)  Ctrl-C to stop")
+      fflush(stdout)
+      return true
+    }
+    return false
+  }
+
+  static func modelName() -> String {
+    var size = 0; sysctlbyname("hw.model", nil, &size, nil, 0)
+    var model = [CChar](repeating: 0, count: max(size, 1)); sysctlbyname("hw.model", &model, &size, nil, 0)
+    var brandSize = 0; sysctlbyname("machdep.cpu.brand_string", nil, &brandSize, nil, 0)
+    var brand = [CChar](repeating: 0, count: max(brandSize, 1)); sysctlbyname("machdep.cpu.brand_string", &brand, &brandSize, nil, 0)
+    return "\(String(cString: model)) (\(String(cString: brand)))"
+  }
+}
+
+/// loopback-only HTTP server: nothing leaves the Mac, and only this Mac can connect
+enum Server {
+  @MainActor private static var listener: NWListener?
+  @MainActor static func start(port: UInt16, monitor: Monitor) throws {
+    let p = NWParameters.tcp
+    p.requiredInterfaceType = .loopback
+    guard let nwPort = NWEndpoint.Port(rawValue: port) else { throw NWError.posix(.EINVAL) }
+    let l = try NWListener(using: p, on: nwPort)
+    l.newConnectionHandler = { c in
+      c.start(queue: .main)
+      c.receive(minimumIncompleteLength: 1, maximumLength: 4096) { data, _, _, _ in
+        let line = data.flatMap { String(data: $0, encoding: .utf8) }?.split(separator: "\r\n").first.map(String.init) ?? ""
+        let path = line.split(separator: " ").dropFirst().first.map { String($0.split(separator: "?").first ?? "") } ?? ""
+        MainActor.assumeIsolated {
+          let (status, type, body): (String, String, String)
+          switch path {
+          case "/metrics": (status, type, body) = ("200 OK", "text/plain; version=0.0.4; charset=utf-8", monitor.prometheus())
+          case "/json", "/": (status, type, body) = ("200 OK", "application/json", monitor.json())
+          case "/healthz": (status, type, body) = ("200 OK", "text/plain", "ok\n")
+          default: (status, type, body) = ("404 Not Found", "text/plain", "not found\n")
+          }
+          let head = "HTTP/1.1 \(status)\r\nContent-Type: \(type)\r\nContent-Length: \(body.utf8.count)\r\nConnection: close\r\n\r\n"
+          c.send(content: Data((head + body).utf8), completion: .contentProcessed { _ in c.cancel() })
+        }
+      }
+    }
+    l.start(queue: .main)
+    listener = l
+  }
+}
+
 @main
 enum Main {
   static func main() {
@@ -808,6 +969,7 @@ enum Main {
     if let i = CommandLine.arguments.firstIndex(of: "--language"), i + 1 < CommandLine.arguments.count, let id = Language(rawValue: CommandLine.arguments[i + 1]) {
       _ = Settings.shared; L.choice = { id }
     }
+    if MainActor.assumeIsolated({ CLI.run(CommandLine.arguments, app: app) }) { app.run(); return }
     if let i = CommandLine.arguments.firstIndex(of: "--preview-settings"), i + 1 < CommandLine.arguments.count {
       // --preview-settings <file.png>: renders the settings window and exits
       let output = CommandLine.arguments[i + 1]

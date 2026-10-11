@@ -6,7 +6,7 @@
 
 <p align="center">
   <img alt="macOS 14+" src="https://img.shields.io/badge/macOS-14%2B-111?style=flat-square&logo=apple&logoColor=white">
-  <img alt="Apple Silicon" src="https://img.shields.io/badge/Apple%20Silicon-M1%E2%80%93M4-FF5A14?style=flat-square">
+  <img alt="Apple Silicon" src="https://img.shields.io/badge/Apple%20Silicon-M1%E2%80%93M5-FF5A14?style=flat-square">
   <img alt="Swift" src="https://img.shields.io/badge/Swift-SwiftUI-FF5A14?style=flat-square&logo=swift&logoColor=white">
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-111?style=flat-square">
   <img alt="No sudo" src="https://img.shields.io/badge/sudo-not%20needed-33CC80?style=flat-square">
@@ -33,12 +33,13 @@ out of the way: about 1% of one CPU core and ~55 MB of memory.
 
 ## Features
 
-- **Chip temperature on Apple Silicon (M1 to M4), no `sudo`.** Sensors are read inside the app through IOKit; there is no helper tool and no password prompt.
+- **Chip temperature on Apple Silicon (M1 to M5), no `sudo`.** Sensors are read inside the app through IOKit; there is no helper tool and no password prompt.
 - **Four levels** (safe, warming up, too hot, critical) with the reason and the next step in plain language.
 - **Menu bar stone** that changes color with the state, plus the live chip, battery and free-memory values.
 - **Battery and SSD temperature**, **memory pressure and swap**, **CPU and GPU load**, **fan speed**, and the **macOS thermal state**.
 - **10-minute graph** of temperature and CPU, and the **top processes** heating the machine (only read while the panel is open).
 - **Adjustable thresholds** and notifications (see [Settings](#settings-your-limits)), with a cool-down margin so alerts do not flap at the edge of a limit.
+- **Scriptable:** `--json`, `--watch` and a local Prometheus endpoint (`--serve`), with the status and the advice in the output, not only raw numbers (see [Command line](#command-line-json-and-prometheus)).
 - **Launch at login**, and **private by design**: no network requests, no analytics.
 
 ## Screenshot
@@ -47,7 +48,15 @@ out of the way: about 1% of one CPU core and ~55 MB of memory.
 
 ## Install
 
-Brasa is built from source for now (a notarized download is on the [roadmap](#roadmap)). You only need the Xcode Command Line Tools.
+**Homebrew** (no Xcode needed):
+
+```bash
+brew install --cask renatoalves-me/brasa/brasa
+```
+
+**Download:** grab `Brasa-v*-arm64.zip` from [Releases](https://github.com/renatoalves-me/brasa/releases), unzip, move to Applications. The build is not notarized yet, so macOS blocks the first launch: open **System Settings → Privacy & Security** and click **Open Anyway** next to Brasa. A notarized build is on the [roadmap](#roadmap).
+
+**From source** (only the Xcode Command Line Tools):
 
 ```bash
 xcode-select --install            # once, if you do not have them
@@ -61,6 +70,27 @@ Requirements: an Apple Silicon Mac and macOS 14 (Sonoma) or later. Intel Macs ar
 
 Preview without opening the menu bar: `~/Applications/Brasa.app/Contents/MacOS/Brasa --preview panel.png`
 (and `--preview-settings settings.png`).
+
+## Command line, JSON and Prometheus
+
+The same binary is a CLI. Every output carries the **status and what to do next**, not only numbers.
+
+```bash
+brasa --json                 # one reading: status, advice, temperatures, load, memory, fans, thresholds
+brasa --watch 5              # one JSON line every 5 s (pipe it to jq)
+brasa --prometheus           # Prometheus text format
+brasa --serve 9091           # http://127.0.0.1:9091/metrics, /json, /healthz
+brasa --sensors              # every temperature sensor your Mac exposes
+```
+
+```bash
+$ brasa --json | jq '.status'
+{ "level": "too_hot", "level_index": 2, "title": "Too hot",
+  "advice": "Chip above 92 °C. Pause heavy work until it drops below 80 °C." }
+```
+
+`--serve` listens on the loopback interface only (127.0.0.1): nothing leaves your Mac, nothing outside it can connect.
+Alert on `brasa_level >= 2` in Prometheus or Grafana. Without Homebrew, the binary is at `~/Applications/Brasa.app/Contents/MacOS/Brasa`.
 
 ## The four levels
 
@@ -94,8 +124,8 @@ Run the translation check with `./tests/run.sh`: it fails if any sentence is mis
 
 **Does Brasa need sudo or admin rights?** No. There is no password prompt and no privileged helper.
 
-**Which Macs work?** Apple Silicon (M1 to M4) on macOS 14+. It is developed on a MacBook Pro with M4 Pro; sensor names can differ between
-chips, so please [open an issue](https://github.com/renatoalves-me/brasa/issues) with your model if a value looks wrong.
+**Which Macs work?** Apple Silicon (M1 to M5) on macOS 14+. It is developed and verified on a MacBook Pro with M4 Pro; M5 uses the same sensor interface but is not tested on real hardware yet. Sensor names can differ between
+chips: run `brasa --sensors` and please [open an issue](https://github.com/renatoalves-me/brasa/issues) with your model if a value looks wrong.
 
 **Can it control my fans?** No. It is a monitor, not a fan controller.
 
@@ -106,12 +136,31 @@ Brasa shows which processes use the most CPU so you can act.
 
 ## Alternatives
 
-Other good tools exist, and they solve different problems: [Stats](https://github.com/exelban/Stats) (open-source system monitor), iStat Menus (paid, full hardware dashboard),
-Macs Fan Control and TG Pro (fan control). Brasa focuses on **safety status and advice with your own thresholds**, and stays light.
+Other good tools exist and solve different problems.
+
+| | Brasa | [mactop](https://github.com/metaspartan/mactop) | [macmon](https://github.com/vladkens/macmon) | [Stats](https://github.com/exelban/Stats) |
+|---|---|---|---|---|
+| Runs without sudo | yes | yes | yes | yes |
+| Menu bar | yes (main interface) | optional `--menubar` mode | no (terminal UI) | yes |
+| Says if it is too hot and what to do | **yes (4 levels + advice)** | no, metrics | no, metrics | no, metrics |
+| Your own thresholds + notifications | **yes** | no | no | partly |
+| JSON output | yes | yes | yes | no |
+| Prometheus endpoint | yes (loopback only) | yes (optional) | yes | no |
+| Power (watts), ANE, DRAM bandwidth | no | yes | yes (power, ANE) | partly |
+| Fan control | no (read-only by design) | optional | no | yes |
+| Install | brew cask, zip, source | brew | brew, MacPorts | brew, dmg |
+
+mactop and macmon go much deeper on raw performance metrics (power, per-core data, bandwidth). Brasa goes the other way: it
+is built to answer "should I stop now?", with your limits and an alert, and it is light enough to leave on all day.
+Comparison based on their public READMEs; check them for the latest.
+
+Brasa does not try to be a full hardware dashboard (see iStat Menus or Stats) or a fan controller (Macs Fan Control, TG Pro).
 
 ## Roadmap
 
-- [ ] Notarized, signed download (GitHub Releases) and a Homebrew cask
+- [x] GitHub Releases zip and a Homebrew cask
+- [x] JSON, `--watch` and Prometheus output
+- [ ] Notarized download (needs an Apple Developer ID)
 - [x] English, Portuguese and Spanish interface (more languages welcome: see [`Localization.swift`](Localization.swift))
 - [ ] Test reports for more Apple Silicon models
 - [ ] Optional temperature unit (°F)
@@ -133,4 +182,4 @@ kit [`brand/kit/`](brand/kit/), summary [`brand/README.md`](brand/README.md). Fo
 
 [MIT](LICENSE) © 2026 Renato Alves.
 
-<sub>Keywords: Mac temperature monitor, menu bar temperature, Apple Silicon temperature, M1 M2 M3 M4 thermal monitor, MacBook overheating, CPU temperature Mac, Mac fan speed, macOS menu bar app, Swift, SwiftUI.</sub>
+<sub>Keywords: Mac temperature monitor, menu bar temperature, Apple Silicon temperature, M1 M2 M3 M4 M5 thermal monitor, MacBook overheating, CPU temperature Mac, Mac fan speed, macOS menu bar app, Swift, SwiftUI.</sub>

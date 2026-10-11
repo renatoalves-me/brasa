@@ -1,0 +1,23 @@
+name: release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Translation check
+        run: ./tests/run.sh
+      - name: Build
+        run: ./build.sh --no-install
+      - name: Package
+        run: |
+          ditto -c -k --keepParent build/Brasa.app Brasa-${GITHUB_REF_NAME}-arm64.zip
+          shasum -a 256 Brasa-${GITHUB_REF_NAME}-arm64.zip | tee Brasa-${GITHUB_REF_NAME}-arm64.zip.sha256
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" Brasa-*.zip Brasa-*.sha256 --generate-notes --title "Brasa ${GITHUB_REF_NAME#v}"
