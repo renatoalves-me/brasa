@@ -26,7 +26,7 @@ T = {
        ("Does it collect data or use the internet?", "No. Everything runs locally. The app makes no network requests and has no analytics."),
        ("How is it different from other Mac monitors?", "Brasa focuses on safety: it turns temperatures into clear states with advice, keeps your own thresholds, and stays light. For full hardware dashboards or fan control, other tools are a better fit.")],
   sup_h="Support the project", sup_p="Brasa is free and open source. If it saved you from a hot Mac, you can help keep it going.",
-  foot="Made in Brazil by Renato Alves.", gh="Source on GitHub", soon="Install with Homebrew: brew install --cask renatoalves-me/brasa/brasa (or download the zip from GitHub Releases).",
+  foot="Made in Brazil by Renato Alves.", gh="Source on GitHub", soon="Install with Homebrew: brew install renatoalves-me/brasa/brasa, then brasa --install (or download the zip from GitHub Releases).",
   kw="mac temperature monitor, menu bar temperature, apple silicon temperature, m4 mac temperature monitor, macbook overheating, cpu temperature mac, mac thermal monitor, mac fan speed, no sudo"),
  "pt": dict(
   path="/pt/", lang="pt-BR", html="pt-BR", nome="Português",
@@ -54,7 +54,7 @@ T = {
        ("Ela coleta dados ou usa a internet?", "Não. Tudo roda localmente. O app não faz requisições de rede e não tem analytics."),
        ("Qual a diferença para outros monitores de Mac?", "A Brasa foca em segurança: transforma temperaturas em estados claros com orientação, guarda os seus limites e é leve. Para painéis completos de hardware ou controle de ventoinhas, outras ferramentas servem melhor.")],
   sup_h="Apoie o projeto", sup_p="A Brasa é gratuita e de código aberto. Se ela livrou você de um Mac superaquecido, ajude a manter o projeto vivo.",
-  foot="Feito no Brasil por Renato Alves.", gh="Código no GitHub", soon="Instale pelo Homebrew: brew install --cask renatoalves-me/brasa/brasa (ou baixe o zip na página de Releases do GitHub).",
+  foot="Feito no Brasil por Renato Alves.", gh="Código no GitHub", soon="Instale pelo Homebrew: brew install renatoalves-me/brasa/brasa e depois brasa --install (ou baixe o zip na página de Releases do GitHub).",
   kw="monitor de temperatura mac, temperatura barra de menus, temperatura apple silicon, mac m4 temperatura, macbook esquentando, temperatura cpu mac, ventoinha mac, sem sudo"),
  "es": dict(
   path="/es/", lang="es", html="es", nome="Español",
@@ -82,7 +82,7 @@ T = {
        ("¿Recopila datos o usa internet?", "No. Todo se ejecuta en local. La app no hace peticiones de red y no tiene analíticas."),
        ("¿En qué se diferencia de otros monitores de Mac?", "Brasa se centra en la seguridad: convierte las temperaturas en estados claros con consejos, respeta tus propios límites y es ligera. Para paneles completos de hardware o control de ventiladores, otras herramientas encajan mejor.")],
   sup_h="Apoya el proyecto", sup_p="Brasa es gratuita y de código abierto. Si te libró de un Mac sobrecalentado, ayuda a mantenerla viva.",
-  foot="Hecho en Brasil por Renato Alves.", gh="Código en GitHub", soon="Instálala con Homebrew: brew install --cask renatoalves-me/brasa/brasa (o descarga el zip en Releases de GitHub).",
+  foot="Hecho en Brasil por Renato Alves.", gh="Código en GitHub", soon="Instálala con Homebrew: brew install renatoalves-me/brasa/brasa y luego brasa --install (o descarga el zip en Releases de GitHub).",
   kw="monitor de temperatura mac, temperatura barra de menús, temperatura apple silicon, mac m4 temperatura, macbook sobrecalentamiento, temperatura cpu mac, ventiladores mac, sin sudo"),
 }
 

@@ -1,24 +1,36 @@
-# Homebrew cask for Brasa. It lives in the tap repo renatoalves-me/homebrew-brasa (Casks/brasa.rb).
-# After each release, update `version` and `sha256` (the release publishes the .sha256 file).
-cask "brasa" do
-  version "1.1.0"
-  sha256 "REPLACE_WITH_SHA256_OF_THE_RELEASE_ZIP"
-
-  url "https://github.com/renatoalves-me/brasa/releases/download/v#{version}/Brasa-v#{version}-arm64.zip"
-  name "Brasa"
-  desc "Menu bar temperature monitor for Apple Silicon with status and advice"
+# Homebrew formula for Brasa. It lives in the tap repo renatoalves-me/homebrew-brasa (Formula/brasa.rb).
+# It builds from source on the user's Mac (Homebrew already requires the Command Line Tools), so the app is not
+# quarantined and macOS opens it without a notarized build. After each release, update `url` and `sha256`.
+class Brasa < Formula
+  desc "Menu bar temperature monitor for Apple Silicon that tells you what to do"
   homepage "https://github.com/renatoalves-me/brasa"
+  url "https://github.com/renatoalves-me/brasa/archive/refs/tags/v1.1.1.tar.gz"
+  sha256 "REPLACE_WITH_SHA256_OF_THE_TAG_TARBALL"
+  license "MIT"
 
-  depends_on macos: ">= :sonoma"
   depends_on arch: :arm64
+  depends_on macos: :sonoma
 
-  app "Brasa.app"
-  binary "#{appdir}/Brasa.app/Contents/MacOS/Brasa", target: "brasa"
-
-  # The build is ad-hoc signed (not notarized yet): clear the quarantine flag so macOS opens it.
-  postflight do
-    system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{appdir}/Brasa.app"]
+  def install
+    system "./build.sh", "--no-install"
+    prefix.install "build/Brasa.app"
+    (bin/"brasa").write <<~SH
+      #!/bin/bash
+      exec "#{opt_prefix}/Brasa.app/Contents/MacOS/Brasa" "$@"
+    SH
   end
 
-  zap trash: "~/Library/Preferences/br.com.renato.brasa.plist"
+  def caveats
+    <<~EOS
+      To put Brasa in your menu bar (and after every upgrade), run:
+        brasa --install
+      It copies Brasa.app to ~/Applications and opens it.
+
+      In the terminal: brasa --json, brasa --watch, brasa --serve 9091, brasa --help
+    EOS
+  end
+
+  test do
+    assert_match "Brasa #{version}", shell_output("#{bin}/brasa --version")
+  end
 end

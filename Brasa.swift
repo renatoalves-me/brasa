@@ -864,7 +864,7 @@ final class MenuBar: NSObject, NSApplicationDelegate {
 
 // ───────── command line: `Brasa --json | --watch | --prometheus | --serve [port] | --sensors | --version | --help` ─────────
 enum CLI {
-  static let version = "1.1.0"
+  static let version = "1.1.1"
   static let help = """
   Brasa \(version): Mac temperature monitor for Apple Silicon (no sudo).
   Without options it opens the menu bar app. Options print to the terminal and exit:
@@ -874,6 +874,7 @@ enum CLI {
     --prometheus      one reading in Prometheus text format
     --serve [port]    local server on 127.0.0.1 (default 9091): /metrics (Prometheus), /json, /healthz
     --sensors         every temperature sensor the Mac exposes (use it to report a new chip)
+    --install         copies Brasa.app to ~/Applications and opens it (after a Homebrew install or upgrade)
     --language en|pt|es   language of the advice text
     --version, --help
   """
@@ -881,8 +882,25 @@ enum CLI {
   /// true when a command-line mode handled the run (the caller then enters the run loop)
   @MainActor static func run(_ args: [String], app: NSApplication) -> Bool {
     func value(after flag: String) -> String? { args.firstIndex(of: flag).flatMap { $0 + 1 < args.count && !args[$0 + 1].hasPrefix("--") ? args[$0 + 1] : nil } }
-    if args.contains("--help") || args.contains("-h") { print(help); exit(0) }
-    if args.contains("--version") { print("Brasa \(version)"); exit(0) }
+    if args.contains("--install") {
+      let fm = FileManager.default, source = Bundle.main.bundleURL
+      let target = fm.homeDirectoryForCurrentUser.appendingPathComponent("Applications/Brasa.app")
+      guard source.pathExtension == "app" else { FileHandle.standardError.write(Data("Run this from inside Brasa.app.\n".utf8)); exit(1) }
+      if source.resolvingSymlinksInPath().path != target.resolvingSymlinksInPath().path {
+        let me = ProcessInfo.processInfo.processIdentifier
+        for a in NSRunningApplication.runningApplications(withBundleIdentifier: "br.com.renato.brasa") where a.processIdentifier != me { a.terminate() }
+        Thread.sleep(forTimeInterval: 1)
+        do {
+          try fm.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
+          if fm.fileExists(atPath: target.path) { try fm.removeItem(at: target) }
+          try fm.copyItem(at: source, to: target)
+        } catch { FileHandle.standardError.write(Data("Could not copy to \(target.path): \(error.localizedDescription)\n".utf8)); exit(1) }
+      }
+      let p = Process(); p.executableURL = URL(fileURLWithPath: "/usr/bin/open"); p.arguments = [target.path]
+      try? p.run(); p.waitUntilExit()
+      print("Brasa \(version) installed in \(target.path) and opened. Look for the stone in the menu bar.")
+      exit(0)
+    }
     if args.contains("--sensors") {
       let t = Temperatures().all()
       if t.isEmpty { FileHandle.standardError.write(Data("No temperature sensors found.\n".utf8)); exit(1) }
@@ -963,6 +981,9 @@ enum Server {
 @main
 enum Main {
   static func main() {
+    // answered before AppKit starts, so they also work without a window server (Homebrew's test sandbox, SSH)
+    if CommandLine.arguments.contains("--help") || CommandLine.arguments.contains("-h") { print(CLI.help); exit(0) }
+    if CommandLine.arguments.contains("--version") { print("Brasa \(CLI.version)"); exit(0) }
     let app = NSApplication.shared
     app.setActivationPolicy(.accessory)
     // --language en|pt|es: forces the language for this run only (for previews; not saved to preferences)

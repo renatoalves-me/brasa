@@ -30,11 +30,14 @@ muda de cor com o estado do Mac, e você recebe uma notificação quando ele esq
 
 ## Instalação
 
-**Homebrew** (não precisa de Xcode):
+**Homebrew** (recomendado, abre sem nenhum aviso de segurança):
 
 ```bash
-brew install --cask renatoalves-me/brasa/brasa
+brew install renatoalves-me/brasa/brasa
+brasa --install                   # coloca a Brasa.app em ~/Applications e abre
 ```
+
+O Homebrew compila no seu Mac em poucos segundos, então o macOS abre direto. Depois de `brew upgrade`, rode `brasa --install` de novo.
 
 **Download:** baixe `Brasa-v*-arm64.zip` em [Releases](https://github.com/renatoalves-me/brasa/releases), descompacte e mova para Aplicativos. O app ainda não é notarizado, então o macOS bloqueia a primeira abertura: vá em **Ajustes do Sistema → Privacidade e Segurança** e clique em **Abrir Mesmo Assim** ao lado da Brasa.
 

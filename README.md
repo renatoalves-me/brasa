@@ -48,11 +48,14 @@ out of the way: about 1% of one CPU core and ~55 MB of memory.
 
 ## Install
 
-**Homebrew** (no Xcode needed):
+**Homebrew** (recommended, opens without any security prompt):
 
 ```bash
-brew install --cask renatoalves-me/brasa/brasa
+brew install renatoalves-me/brasa/brasa
+brasa --install                   # puts Brasa.app in ~/Applications and opens it
 ```
+
+Homebrew builds it on your Mac in a few seconds, so macOS opens it right away. After `brew upgrade`, run `brasa --install` again.
 
 **Download:** grab `Brasa-v*-arm64.zip` from [Releases](https://github.com/renatoalves-me/brasa/releases), unzip, move to Applications. The build is not notarized yet, so macOS blocks the first launch: open **System Settings → Privacy & Security** and click **Open Anyway** next to Brasa. A notarized build is on the [roadmap](#roadmap).
 
@@ -90,7 +93,7 @@ $ brasa --json | jq '.status'
 ```
 
 `--serve` listens on the loopback interface only (127.0.0.1): nothing leaves your Mac, nothing outside it can connect.
-Alert on `brasa_level >= 2` in Prometheus or Grafana. Without Homebrew, the binary is at `~/Applications/Brasa.app/Contents/MacOS/Brasa`.
+Alert on `brasa_level >= 2` in Prometheus or Grafana. Without Homebrew, the command is at `~/Applications/Brasa.app/Contents/MacOS/Brasa`.
 
 ## The four levels
 
@@ -148,7 +151,7 @@ Other good tools exist and solve different problems.
 | Prometheus endpoint | yes (loopback only) | yes (optional) | yes | no |
 | Power (watts), ANE, DRAM bandwidth | no | yes | yes (power, ANE) | partly |
 | Fan control | no (read-only by design) | optional | no | yes |
-| Install | brew cask, zip, source | brew | brew, MacPorts | brew, dmg |
+| Install | brew, zip, source | brew | brew, MacPorts | brew, dmg |
 
 mactop and macmon go much deeper on raw performance metrics (power, per-core data, bandwidth). Brasa goes the other way: it
 is built to answer "should I stop now?", with your limits and an alert, and it is light enough to leave on all day.
@@ -158,7 +161,7 @@ Brasa does not try to be a full hardware dashboard (see iStat Menus or Stats) or
 
 ## Roadmap
 
-- [x] GitHub Releases zip and a Homebrew cask
+- [x] GitHub Releases zip and Homebrew (`brew install renatoalves-me/brasa/brasa`)
 - [x] JSON, `--watch` and Prometheus output
 - [ ] Notarized download (needs an Apple Developer ID)
 - [x] English, Portuguese and Spanish interface (more languages welcome: see [`Localization.swift`](Localization.swift))
