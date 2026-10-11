@@ -5,7 +5,7 @@ class Brasa < Formula
   desc "Menu bar temperature monitor for Apple Silicon that tells you what to do"
   homepage "https://github.com/renatoalves-me/brasa"
   url "https://github.com/renatoalves-me/brasa/archive/refs/tags/v1.1.1.tar.gz"
-  sha256 "REPLACE_WITH_SHA256_OF_THE_TAG_TARBALL"
+  sha256 "59782a90f31a7416f4a5b9c87894160d8eaa2c24abcc87e834a61b83c493f21f"
   license "MIT"
 
   depends_on arch: :arm64
