@@ -416,8 +416,8 @@ enum Stone {
     return p
   }
   /// the stone (light enough to show on a dark menu bar) with the ember in the state's color
-  static func draw(in r: NSRect, ember color: NSColor) {
-    let dark = NSAppearance.currentDrawing().bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+  static func draw(in r: NSRect, ember color: NSColor, dark: Bool? = nil) {
+    let dark = dark ?? (NSAppearance.currentDrawing().bestMatch(from: [.darkAqua, .aqua]) == .darkAqua)
     (dark ? NSColor(red: 0.36, green: 0.36, blue: 0.39, alpha: 1) : NSColor(red: 0.055, green: 0.05, blue: 0.05, alpha: 1)).setFill()
     path(base, in: r).fill()
     color.setFill(); path(ember, in: r).fill()
@@ -427,17 +427,18 @@ enum Stone {
 
 
 /// menu bar item: the stone with the ember in the worst-risk color + small labels above and values below (colored only when that item needs attention)
-func menuBarImage(level: Level, blocks: [(String, String, Level)]) -> NSImage {
+func menuBarImage(level: Level, blocks: [(String, String, Level)], dark: Bool) -> NSImage {
   let labelFont = NSFont.systemFont(ofSize: 7.5, weight: .semibold), value = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)
   let widths = blocks.map { max(($0.0 as NSString).size(withAttributes: [.font: labelFont]).width, ($0.1 as NSString).size(withAttributes: [.font: value]).width) }
   let gap: CGFloat = 7, dot: CGFloat = 16
   let width = dot + gap + widths.reduce(0, +) + gap * CGFloat(blocks.count - 1) + 1
   let img = NSImage(size: NSSize(width: ceil(width), height: 22), flipped: false) { _ in
-    Stone.draw(in: NSRect(x: 0, y: 3, width: dot, height: 16), ember: level.nsColor)
+    Stone.draw(in: NSRect(x: 0, y: 3, width: dot, height: 16), ember: level.nsColor, dark: dark)
     var x = dot + gap
     for (i, (r, val, n)) in blocks.enumerated() {
-      let textColor = n == .ok ? NSColor.labelColor : n.nsColor
-      (r as NSString).draw(at: NSPoint(x: x, y: 12.5), withAttributes: [.font: labelFont, .foregroundColor: n == .ok ? NSColor.secondaryLabelColor : n.nsColor])
+      let ink = dark ? NSColor.white : NSColor.black   // explicit: dynamic colors resolve wrong inside the status item's image
+      let textColor = n == .ok ? ink : n.nsColor
+      (r as NSString).draw(at: NSPoint(x: x, y: 12.5), withAttributes: [.font: labelFont, .foregroundColor: n == .ok ? ink.withAlphaComponent(0.8) : n.nsColor])
       (val as NSString).draw(at: NSPoint(x: x, y: -0.5), withAttributes: [.font: value, .foregroundColor: textColor])
       x += widths[i] + gap
     }
@@ -781,12 +782,20 @@ final class MenuBar: NSObject, NSApplicationDelegate {
       ("BAT", v.battery.map { "\(Int($0.rounded()))°" } ?? "–", v.batteryLevel),
       ("MEM", v.memTotal > 0 ? String(format: "%.0fG", max(v.memTotal - v.memUsed, 0)) : "–", v.memoryLevel),
     ]
-    b.image = menuBarImage(level: v.level, blocks: blocks); b.imagePosition = .imageOnly; b.title = ""
+    let dark = b.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+    b.image = menuBarImage(level: v.level, blocks: blocks, dark: dark); b.imagePosition = .imageOnly; b.title = ""
     b.toolTip = "Brasa · \(v.level.title)"
   }
   @objc func toggle() {
     guard let b = item.button else { return }
-    if pop.isShown { pop.performClose(nil) } else { pop.show(relativeTo: b.bounds, of: b, preferredEdge: .minY); NSApp.activate(ignoringOtherApps: true) }
+    if pop.isShown { pop.performClose(nil) } else { pop.show(relativeTo: b.bounds, of: b, preferredEdge: .minY); NSApp.activate(ignoringOtherApps: true)
+      // NSPopover can place a tall panel above the screen on a status item; pin its top just under the menu bar
+      DispatchQueue.main.async { [weak self] in
+        guard let w = self?.pop.contentViewController?.view.window, let screen = b.window?.screen ?? NSScreen.main else { return }
+        let top = screen.visibleFrame.maxY
+        if w.frame.maxY > top { w.setFrameTopLeftPoint(NSPoint(x: w.frame.minX, y: top)) }
+      }
+    }
   }
 }
 
@@ -828,7 +837,7 @@ enum Main {
         }
         // the menu bar item too, on a dark backdrop (as in dark mode)
         let blocks: [(String, String, Level)] = [("CHIP", v.temp.map { "\(Int($0.rounded()))°" } ?? "–", v.chipLevel), ("BAT", v.battery.map { "\(Int($0.rounded()))°" } ?? "–", v.batteryLevel), ("MEM", String(format: "%.0fG", max(v.memTotal - v.memUsed, 0)), v.memoryLevel)]
-        let bar = menuBarImage(level: v.level, blocks: blocks)
+        let bar = menuBarImage(level: v.level, blocks: blocks, dark: true)
         let backdrop = NSImage(size: NSSize(width: bar.size.width + 24, height: 24), flipped: false) { r in
           NSColor(white: 0.16, alpha: 1).setFill(); r.fill(); NSAppearance(named: .darkAqua)?.performAsCurrentDrawingAppearance { bar.draw(at: NSPoint(x: 12, y: 1), from: .zero, operation: .sourceOver, fraction: 1) }; return true }
         if let t = backdrop.tiffRepresentation, let rep = NSBitmapImageRep(data: t), let png = rep.representation(using: .png, properties: [:]) { try? png.write(to: URL(fileURLWithPath: output.replacingOccurrences(of: ".png", with: "-menubar.png"))) }
